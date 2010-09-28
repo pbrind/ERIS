@@ -46,7 +46,6 @@ import org.dspace.core.Context;
 import org.dspace.storage.rdbms.DatabaseManager;
 import org.dspace.storage.rdbms.TableRowIterator;
 import org.dspace.storage.rdbms.TableRow;
-import org.postgresql.util.PGInterval;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -54,8 +53,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-
-//import org.postgresql.util.PGInterval;
 
 /**
  * @author Alexey Maslov
@@ -226,20 +223,54 @@ public class HarvestedCollection
 		expirationTime = calendar.getTime();
     	
     	/* Select all collections whose last_harvest is before our start time, whose harvest_type *is not* 0 and whose status *is* 0 (available) or 3 (OAI Error). */
-    	TableRowIterator tri = DatabaseManager.queryTable(c, "harvested_collection",
-        	"SELECT * FROM harvested_collection WHERE (((last_harvested + harvest_frequency) < NOW()) or last_harvested is null) and harvest_type > ? and (harvest_status = ? or harvest_status = ? or (harvest_status=? and harvest_start_time < ?)) ORDER BY last_harvested",
-        	0, HarvestedCollection.STATUS_READY, HarvestedCollection.STATUS_OAI_ERROR, HarvestedCollection.STATUS_BUSY, new java.sql.Timestamp(expirationTime.getTime()));
-    	
-    	/*        	"SELECT * FROM harvested_collection WHERE (last_harvested < ? or last_harvested is null) and harvest_type > ? and (harvest_status = ? or harvest_status = ? or (harvest_status=? and harvest_start_time < ?)) ORDER BY last_harvested",
+    	/*TableRowIterator tri = DatabaseManager.queryTable(c, "harvested_collection",
+        	"SELECT * FROM harvested_collection WHERE (last_harvested < ? or last_harvested is null) and harvest_type > ? and (harvest_status = ? or harvest_status = ? or (harvest_status=? and harvest_start_time < ?)) ORDER BY last_harvested",
         	new java.sql.Timestamp(startTime.getTime()), 0, HarvestedCollection.STATUS_READY, HarvestedCollection.STATUS_OAI_ERROR, HarvestedCollection.STATUS_BUSY, new java.sql.Timestamp(expirationTime.getTime()));
-        */
+    	*/
+		
+		TableRowIterator tri = DatabaseManager.queryTable(c, "harvested_collection", 
+				"SELECT * FROM harvested_collection");
     	
     	List<Integer> collectionIds = new ArrayList<Integer>();
 
+    	Calendar nextHarvest = Calendar.getInstance();
+    	int harvestFrequency;
+    	int harvestStatus;
+    	int harvestType;
+    	
     	while (tri.hasNext())
     	{
     		TableRow row = tri.next();
-    		collectionIds.add(row.getIntColumn("collection_id"));
+    		
+    		harvestType = row.getIntColumn("harvest_type");
+    		harvestStatus = row.getIntColumn("harvest_status");
+    		
+    		if ((harvestType != 0) && (harvestStatus == 0))
+    		{
+    			if (row.getDateColumn("last_harvested") != null)
+    			{
+        			harvestFrequency = row.getIntColumn("harvest_frequency");
+        			if (harvestFrequency == 0)
+        			{
+        				harvestFrequency = 12;
+        			}
+        			nextHarvest.setTime(row.getDateColumn("last_harvested"));
+
+        			nextHarvest.add(calendar.HOUR, harvestFrequency);
+        			
+        			if (nextHarvest.before(startTime))
+        			{
+        				collectionIds.add(row.getIntColumn("collection_id"));
+        			}
+    			}
+    			else
+    			{
+    				collectionIds.add(row.getIntColumn("collection_id"));
+    			}
+
+    		}
+    		
+    		//collectionIds.add(row.getIntColumn("collection_id"));
     	}
     	
     	return collectionIds;
@@ -309,17 +340,23 @@ public class HarvestedCollection
     /** 
      * A function to set all harvesting-related parameters at once 
      */
-    public void setHarvestParams(int type, String oaiSource, String oaiSetId, String mdConfigId, String harvestFequency) {
+    public void setHarvestParams(int type, String oaiSource, String oaiSetId, String mdConfigId, int harvestFrequency) {
    		setHarvestType(type);
     	setOaiSource(oaiSource);
     	setOaiSetId(oaiSetId); 
-    	setOaiFrequency(harvestFequency);
     	setHarvestMetadataConfig(mdConfigId);
+    	setHarvestFrequency(harvestFrequency);
     }     
 
-    /* Setters for the appropriate harvesting-related columns */
+    /* Setters for the appropriate harverting-related columns */
     public void setHarvestType(int type) {
     	harvestRow.setColumn("harvest_type",type);
+    	modified = true;
+    }
+    
+    public void setHarvestFrequency(int harvestFrequency)
+    {
+    	harvestRow.setColumn("harvest_frequency", harvestFrequency);
     	modified = true;
     }
     
@@ -330,11 +367,6 @@ public class HarvestedCollection
      */
     public void setHarvestStatus(int status) {
     	harvestRow.setColumn("harvest_status",status);
-    	modified = true;
-    }
-    
-    public void setOaiFrequency(String frequency){
-    	harvestRow.setColumn("harvest_frequency", frequency);
     	modified = true;
     }
 
@@ -411,16 +443,17 @@ public class HarvestedCollection
     	return harvestRow.getIntColumn("harvest_type");
     }
     
+    public int getHarvestFrequency()
+    {
+    	return harvestRow.getIntColumn("harvest_frequency");
+    }
+    
     public int getHarvestStatus() {
     	return harvestRow.getIntColumn("harvest_status");
     }
 
     public String getOaiSource() {
     	return harvestRow.getStringColumn("oai_source");
-    }
-    
-    public String getHarvestFrequency(){
-    	return harvestRow.getStringColumn("harvest_frequency");
     }
 
     public String getOaiSetId() {

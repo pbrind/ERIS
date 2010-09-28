@@ -728,11 +728,11 @@ public class EditCommunitiesServlet extends DSpaceServlet
 			
 			String oaiProvider = request.getParameter("oai_provider");
 			String oaiSetId = request.getParameter("oai_setid");
-			String oaiFrequency = request.getParameter("oai_frequency");
 			String metadataKey = request.getParameter("metadata_format");
 			String harvestType = request.getParameter("harvest_level");
+			String harvestFrequency = request.getParameter("oai_harvest_frequency");
 
-			hc.setHarvestParams(Integer.parseInt(harvestType), oaiProvider, oaiSetId, metadataKey, oaiFrequency);
+			hc.setHarvestParams(Integer.parseInt(harvestType), oaiProvider, oaiSetId, metadataKey, Integer.parseInt(harvestFrequency));
 			hc.setHarvestStatus(HarvestedCollection.STATUS_READY);
 			
 			hc.update();

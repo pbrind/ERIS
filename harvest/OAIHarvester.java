@@ -78,8 +78,6 @@ import org.dspace.content.MetadataField;
 import org.dspace.content.MetadataSchema;
 import org.dspace.content.NonUniqueMetadataException;
 import org.dspace.content.WorkspaceItem;
-import org.dspace.harvest.HarvestedCollection;
-import org.dspace.harvest.HarvestedItem;
 import org.dspace.harvest.OAIHarvester.HarvestingException;
 import org.dspace.content.crosswalk.CrosswalkException;
 import org.dspace.content.crosswalk.IngestionCrosswalk;
@@ -1253,8 +1251,19 @@ public class OAIHarvester {
 		 */
 		public static void addThread(int collecionID) throws SQLException, IOException, AuthorizeException {
 			log.debug("****** Entered the addThread method. Active threads: " + harvestThreads.toString());
+			
 			Context subContext = new Context();
-			//subContext.setCurrentUser(harvestAdmin);
+			
+			// new
+			String harvestAdminParam = ConfigurationManager.getProperty("harvester.eperson");
+			harvestAdmin = null;
+			if (harvestAdminParam != null && harvestAdminParam.length() > 0)
+			harvestAdmin = EPerson.findByEmail(subContext, harvestAdminParam);
+			
+			
+			subContext.setCurrentUser(harvestAdmin);
+			
+			log.info("In OAIHarvester.addThread the context user is: " + subContext.getCurrentUser());
 			
 			HarvestedCollection hc = HarvestedCollection.find(subContext, collecionID);
 			hc.setHarvestStatus(HarvestedCollection.STATUS_QUEUED);
@@ -1290,7 +1299,7 @@ public class OAIHarvester {
 		}
 		
 		private void runHarvest() 
-		{
+		{			
 			Collection dso = null;
 			try {
 				dso = Collection.find(context, hc.getCollectionId());

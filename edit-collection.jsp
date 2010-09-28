@@ -112,7 +112,7 @@
 	String lastHarvestMsg= "";
 	int harvestLevelValue=0;
 	int harvestStatus= 0;
-	String harvestFrequency = "";
+	int harvestFrequency= 0;
 	
     Group[] wfGroups = new Group[3];
     wfGroups[0] = null;
@@ -407,7 +407,6 @@
 			harvestLevelValue = hc.getHarvestType();
 			String lastHarvestMsg= hc.getHarvestMessage();
 			int harvestStatus = hc.getHarvestStatus();
-			String harvestFrequency = hc.getHarvestFrequency();
 			
 			if (lastHarvestMsg == null)
 				lastHarvestMsg = "none";
@@ -431,7 +430,7 @@
             
             <tr>
             	<td class="submitFormLabel">Harvest Frequency</td>
-            	<td><input type="text" name="oai_frequency" value="<%= harvestFrequency %>" size="50" /></td>
+            	<td><input type="text" name="oai_harvest_frequency" value="<%= harvestFrequency %>" size="50" /></td>
             </tr>
             
             <tr>
